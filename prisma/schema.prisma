@@ -79,3 +79,7 @@ model Verification {
   @@index([identifier])
   @@map("verification")
 }
+
+model TestModel {
+  id  String @id @default(uuid())
+}
