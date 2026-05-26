@@ -1,4 +1,15 @@
-import { toNextJsHandler } from "better-auth/next-js";
-import { auth } from "@/lib/auth";
+function demoAuthResponse(): Response {
+  return Response.json({
+    ok: true,
+    mode: "demo",
+    message: "Collageboard is using local demo auth for now.",
+  });
+}
 
-export const { GET, POST } = toNextJsHandler(auth);
+export function GET(): Response {
+  return demoAuthResponse();
+}
+
+export function POST(): Response {
+  return demoAuthResponse();
+}
