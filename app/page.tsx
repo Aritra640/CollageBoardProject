@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { authClient } from "@/lib/auth-client";
 
 type AuthMode = "signin" | "signup";
 
@@ -51,7 +50,6 @@ const seedNotices: Notice[] = [
 ];
 
 export default function Page() {
-  const session = authClient.useSession();
   const [mode, setMode] = useState<AuthMode>("signin");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("demo@collageboard.test");
@@ -64,19 +62,6 @@ export default function Page() {
   const [noticeBody, setNoticeBody] = useState("");
 
   useEffect(() => {
-    const saved = window.localStorage.getItem("collageboard:notices");
-    const savedUser = window.localStorage.getItem("collageboard:user");
-
-    if (saved) {
-      setNotices(JSON.parse(saved) as Notice[]);
-    }
-
-    if (savedUser) {
-      setDemoUser(JSON.parse(savedUser) as DemoUser);
-    }
-  }, []);
-
-  useEffect(() => {
     window.localStorage.setItem("collageboard:notices", JSON.stringify(notices));
   }, [notices]);
 
@@ -84,16 +69,7 @@ export default function Page() {
     () => notices.filter((notice) => !notice.acknowledged).length,
     [notices],
   );
-  const activeUser = session.data?.user || demoUser;
-
-  async function withTimeout<T>(promise: Promise<T>, timeout = 3500): Promise<T> {
-    return await Promise.race([
-      promise,
-      new Promise<never>((_, reject) => {
-        window.setTimeout(() => reject(new Error("Auth timed out")), timeout);
-      }),
-    ]);
-  }
+  const activeUser = demoUser;
 
   function startDemoSession() {
     const nextUser = {
@@ -105,61 +81,25 @@ export default function Page() {
     setDemoUser(nextUser);
   }
 
-  async function handleAuth(event: FormEvent<HTMLFormElement>) {
+  function handleAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setMessage("");
     setIsSubmitting(true);
 
-    try {
-      if (mode === "signup") {
-        const result = await withTimeout(
-          authClient.signUp.email({
-            name: name || email.split("@")[0],
-            email,
-            password,
-          }),
-        );
-
-        if (result.error) {
-          startDemoSession();
-          setMessage("Using local demo auth. The dashboard is ready.");
-        } else {
-          setMessage("Account created. You are signed in.");
-          await session.refetch();
-        }
-      } else {
-        const result = await withTimeout(
-          authClient.signIn.email({
-            email,
-            password,
-          }),
-        );
-
-        if (result.error) {
-          startDemoSession();
-          setMessage("Using local demo auth. The dashboard is ready.");
-        } else {
-          await session.refetch();
-        }
-      }
-    } catch {
+    window.setTimeout(() => {
       startDemoSession();
-      setMessage("Using local demo auth. The dashboard is ready.");
-    } finally {
+      setMessage(
+        mode === "signup"
+          ? "Account created for this demo."
+          : "Signed in for this demo.",
+      );
       setIsSubmitting(false);
-    }
+    }, 250);
   }
 
-  async function handleLogout() {
+  function handleLogout() {
     window.localStorage.removeItem("collageboard:user");
     setDemoUser(null);
-
-    try {
-      await withTimeout(authClient.signOut(), 1500);
-      await session.refetch();
-    } catch {
-      return;
-    }
+    setMessage("");
   }
 
   function addNotice(event: FormEvent<HTMLFormElement>) {
@@ -284,12 +224,6 @@ export default function Page() {
             {message ? (
               <p className="mb-4 border border-[#e0b8aa] bg-[#fff2ec] px-4 py-3 text-sm text-[#8b3324]">
                 {message}
-              </p>
-            ) : null}
-
-            {session.isPending ? (
-              <p className="mb-4 text-sm font-medium text-[#77705f]">
-                Checking saved server session...
               </p>
             ) : null}
 
